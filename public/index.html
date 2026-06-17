@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在线决策投票系统</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="header" class="hidden">
+      <div class="header-content">
+        <h1 class="logo" onclick="app.navigate('home')">🗳️ 决策投票</h1>
+        <nav class="nav">
+          <button onclick="app.navigate('home')" class="nav-btn" data-page="home">投票列表</button>
+          <button onclick="app.navigate('create')" class="nav-btn" data-page="create">创建投票</button>
+          <button onclick="app.navigate('templates')" class="nav-btn" data-page="templates">模板管理</button>
+          <button onclick="app.navigate('groups')" class="nav-btn" data-page="groups">议程管理</button>
+          <button onclick="app.navigate('compare')" class="nav-btn" data-page="compare">对比分析</button>
+        </nav>
+        <div class="user-info">
+          <div class="notification-wrapper">
+            <button class="notification-btn" onclick="app.toggleNotificationPanel()" id="notificationBtn">
+              🔔 <span class="notification-badge" id="notificationBadge" style="display:none;">0</span>
+            </button>
+            <div class="notification-panel hidden" id="notificationPanel">
+              <div class="notification-header">
+                <span>通知中心</span>
+                <button class="btn-link" onclick="app.markAllNotificationsRead()">全部已读</button>
+              </div>
+              <div class="notification-list" id="notificationList"></div>
+            </div>
+          </div>
+          <span id="userDisplay"></span>
+          <button onclick="app.navigate('settings')" class="settings-btn" title="设置">⚙️</button>
+          <button onclick="app.logout()" class="logout-btn">退出</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <div id="login-page" class="auth-page">
+        <div class="auth-card">
+          <h1>🗳️ 在线决策投票</h1>
+          <p class="subtitle">支持多种投票算法的智能决策平台</p>
+          
+          <div class="auth-tabs">
+            <button class="auth-tab active" onclick="app.switchAuthTab('login')">登录</button>
+            <button class="auth-tab" onclick="app.switchAuthTab('register')">注册</button>
+          </div>
+
+          <form id="login-form" onsubmit="app.handleLogin(event)">
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" id="login-username" required>
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input type="password" id="login-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">登录</button>
+          </form>
+
+          <form id="register-form" class="hidden" onsubmit="app.handleRegister(event)">
+            <div class="form-group">
+              <label>用户名</label>
+              <input type="text" id="register-username" required>
+            </div>
+            <div class="form-group">
+              <label>显示名称</label>
+              <input type="text" id="register-displayname">
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input type="password" id="register-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">注册</button>
+          </form>
+
+          <div id="auth-error" class="error-message hidden"></div>
+        </div>
+      </div>
+
+      <div id="home-page" class="page hidden">
+        <div class="page-header">
+          <h2>投票列表</h2>
+          <div class="filter-tabs">
+            <button class="filter-tab active" onclick="app.filterPolls('all')">全部</button>
+            <button class="filter-tab" onclick="app.filterPolls('active')">进行中</button>
+            <button class="filter-tab" onclick="app.filterPolls('ended')">已结束</button>
+          </div>
+        </div>
+        <div id="polls-list" class="polls-grid"></div>
+      </div>
+
+      <div id="create-page" class="page hidden">
+        <div class="page-header">
+          <h2>创建投票</h2>
+        </div>
+        <div class="create-form-container">
+          <form id="create-form" onsubmit="app.handleCreatePoll(event)">
+            <div class="form-section">
+              <h3>使用模板快速创建</h3>
+              <div class="form-group">
+                <label>选择模板（可选）</label>
+                <select id="template-select" onchange="app.applyTemplate()">
+                  <option value="">-- 不使用模板 --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>基本信息</h3>
+              <div class="form-group">
+                <label>投票标题 *</label>
+                <input type="text" id="poll-title" required maxlength="100">
+              </div>
+              <div class="form-group">
+                <label>投票描述</label>
+                <textarea id="poll-description" rows="3" maxlength="500"></textarea>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>投票类型</h3>
+              <div class="type-grid">
+                <label class="type-card">
+                  <input type="radio" name="poll-type" value="single" checked>
+                  <div class="type-card-content">
+                    <div class="type-icon">☑️</div>
+                    <div class="type-name">单选投票</div>
+                    <div class="type-desc">简单多数制，票最多者获胜</div>
+                  </div>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="poll-type" value="multiple">
+                  <div class="type-card-content">
+                    <div class="type-icon">☑️☑️</div>
+                    <div class="type-name">多选投票</div>
+                    <div class="type-desc">批准投票，可选多个选项</div>
+                  </div>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="poll-type" value="ranked">
+                  <div class="type-card-content">
+                    <div class="type-icon">📊</div>
+                    <div class="type-name">排序投票</div>
+                    <div class="type-desc">Borda计数法，按排名计分</div>
+                  </div>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="poll-type" value="score">
+                  <div class="type-card-content">
+                    <div class="type-icon">⭐</div>
+                    <div class="type-name">评分投票</div>
+                    <div class="type-desc">0-10分，取平均值</div>
+                  </div>
+                </label>
+                <label class="type-card">
+                  <input type="radio" name="poll-type" value="weighted">
+                  <div class="type-card-content">
+                    <div class="type-icon">⚖️</div>
+                    <div class="type-name">权重分配</div>
+                    <div class="type-desc">分配100分到各选项</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>投票选项</h3>
+              <p class="form-hint">至少2个选项，最多10个</p>
+              <div id="options-container"></div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="app.addOption()">+ 添加选项</button>
+            </div>
+
+            <div class="form-section">
+              <h3>设置</h3>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>截止时间</label>
+                  <input type="datetime-local" id="poll-deadline">
+                </div>
+                <div class="form-group">
+                  <label>截止前提醒（小时）</label>
+                  <input type="number" id="poll-reminder-hours" min="0" max="168" placeholder="如：1">
+                </div>
+              </div>
+              <div class="checkbox-list">
+                <label class="checkbox-item">
+                  <input type="checkbox" id="poll-anonymous">
+                  <span>匿名投票（仅显示统计结果）</span>
+                </label>
+                <label class="checkbox-item">
+                  <input type="checkbox" id="poll-abstain">
+                  <span>允许弃权</span>
+                </label>
+                <label class="checkbox-item">
+                  <input type="checkbox" id="poll-supermajority">
+                  <span>条件决议（需超过2/3多数才通过）</span>
+                </label>
+                <label class="checkbox-item">
+                  <input type="checkbox" id="poll-weighted">
+                  <span>加权投票（按用户权重计票）</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h3>邀请参与者</h3>
+              <div id="invite-users-container">
+                <p class="form-hint">选择要邀请参与投票的用户</p>
+                <div id="users-checkbox-list" class="users-checkbox-grid"></div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-outline" onclick="app.navigate('home')">取消</button>
+              <button type="submit" class="btn btn-primary">创建投票</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="poll-page" class="page hidden">
+        <button onclick="app.navigate('home')" class="back-btn">← 返回列表</button>
+        <div id="poll-detail"></div>
+      </div>
+
+      <div id="results-page" class="page hidden">
+        <button onclick="app.goBackFromResults()" class="back-btn">← 返回</button>
+        <div id="results-content"></div>
+      </div>
+
+      <div id="templates-page" class="page hidden">
+        <div class="page-header">
+          <h2>模板管理</h2>
+          <button class="btn btn-primary btn-sm" onclick="app.showCreateTemplateModal()">+ 创建模板</button>
+        </div>
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="app.switchTemplateTab('mine')" id="template-tab-mine">我的模板</button>
+          <button class="filter-tab" onclick="app.switchTemplateTab('public')" id="template-tab-public">模板市场</button>
+        </div>
+        <div id="templates-list" class="templates-grid"></div>
+      </div>
+
+      <div id="groups-page" class="page hidden">
+        <div class="page-header">
+          <h2>议程管理</h2>
+          <button class="btn btn-primary btn-sm" onclick="app.showCreateGroupModal()">+ 创建议程</button>
+        </div>
+        <div id="groups-list" class="groups-grid"></div>
+      </div>
+
+      <div id="group-detail-page" class="page hidden">
+        <button onclick="app.navigate('groups')" class="back-btn">← 返回议程列表</button>
+        <div id="group-detail"></div>
+      </div>
+
+      <div id="compare-page" class="page hidden">
+        <div class="page-header">
+          <h2>对比分析</h2>
+        </div>
+        <div class="create-form-container">
+          <div class="form-section">
+            <h3>选择要对比的已结束投票（同类型，至少2个）</h3>
+            <div id="compare-polls-list" class="users-checkbox-grid"></div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="app.runComparison()">开始对比分析</button>
+            </div>
+          </div>
+          <div id="compare-results"></div>
+        </div>
+      </div>
+
+      <div id="settings-page" class="page hidden">
+        <div class="page-header">
+          <h2>个人设置</h2>
+        </div>
+        <div class="create-form-container">
+          <div class="form-section">
+            <h3>通知设置</h3>
+            <div class="checkbox-list">
+              <label class="checkbox-item">
+                <input type="checkbox" id="setting-notify-before-end">
+                <span>投票截止前提醒</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="setting-notify-before-start">
+                <span>投票开始前提醒</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="setting-notify-result">
+                <span>投票结果已出通知</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" id="setting-notify-invite">
+                <span>新投票邀请通知</span>
+              </label>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="app.saveSettings()">保存设置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal" id="modal">
+        <div class="modal-header">
+          <h3 id="modal-title">标题</h3>
+          <button class="modal-close" onclick="app.closeModal()">×</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
